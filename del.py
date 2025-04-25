@@ -69,8 +69,9 @@ async def trigger_deletion(client: Client, message: Message):
 @app.on_callback_query(filters.regex(r"^confirm_(\d+)_(\d+)$"))
 async def process_deletion(client, callback_query):
     chat_id = int(callback_query.matches[0].group(1))
+    print("chat id:", chat_id)
     last_id = int(callback_query.matches[0].group(2))
-    
+    print("last id:", last_id)  
    # await callback_query.message.edit_text("⏳ Deleting messages...")
     
     try:
