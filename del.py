@@ -8,15 +8,13 @@ API_HASH = "95937bcf6bc0938f263fc7ad96959c6d" # Your API Hash
 BOT_TOKEN ="7005003917:AAG1GwMAm4uFxMOzvesg1vTWRjVX0hHKStM" # Your bot token
 
 
-
-
 app = Client("message_deleter_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 async def delete_previous_messages(chat_id, last_message_id):
     deleted_count = 0
     current_message_id = last_message_id - 1  # Start from the message before last
     
-    while current_message_id > 1:
+    while current_message_id > 0:
         try:
             # Try to get and delete each message sequentially
             message = await app.get_messages(chat_id, current_message_id)
@@ -66,34 +64,35 @@ async def trigger_deletion(client: Client, message: Message):
         reply_markup=keyboard
     )
 
-@app.on_callback_query(filters.regex(r"^confirm_(\d+)_(\d+)$"))
-async def process_deletion(client, callback_query):
-    chat_id = int(callback_query.matches[0].group(1))
-    print("chat id:", chat_id)
-    last_id = int(callback_query.matches[0].group(2))
-    print("last id:", last_id)  
-   # await callback_query.message.edit_text("⏳ Deleting messages...")
+@app.on_callback_query()
+async def handle_callbacks(client: Client, callback_query: CallbackQuery):
+    data = callback_query.data
     
-    try:
-        count = await delete_previous_messages(chat_id, last_id)
-        # Delete our marker message
+    if data.startswith("confirm_"):
+        _, chat_id, last_id = data.split("_")
+        chat_id = int(chat_id)
+        last_id = int(last_id)
+        
+        await callback_query.answer("Starting deletion...")
+        await callback_query.message.edit_text("⏳ Deleting messages...", reply_markup=None)
+        
         try:
-            await app.delete_messages(chat_id, last_id)
-        except:
-            pass
-            
-        await callback_query.message.edit_text(
-            f"✅ Deleted {count} messages (up to ID {last_id-1})"
-        )
-    except Exception as e:
-        await callback_query.message.edit_text(f"❌ Error: {str(e)}")
+            count = await delete_previous_messages(chat_id, last_id)
+            # Delete our marker message
+            try:
+                await app.delete_messages(chat_id, last_id)
+            except:
+                pass
+                
+            await callback_query.message.edit_text(
+                f"✅ Deleted {count} messages (up to ID {last_id-1})"
+            )
+        except Exception as e:
+            await callback_query.message.edit_text(f"❌ Error: {str(e)}")
     
-    await callback_query.answer()
-
-@app.on_callback_query(filters.regex("^cancel$"))
-async def cancel_deletion(client, callback_query):
-    await callback_query.message.edit_text("❌ Deletion cancelled")
-    await callback_query.answer()
+    elif data == "cancel":
+        await callback_query.answer("Deletion cancelled")
+        await callback_query.message.edit_text("❌ Deletion cancelled", reply_markup=None)
 
 if __name__ == "__main__":
     print("Starting message deletion bot...")
