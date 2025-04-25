@@ -15,23 +15,6 @@ app = Client(
     api_hash=API_HASH,
     session_string=SESSION_STRING
 )
-from pyrogram import Client, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-import asyncio
-
-# Replace these with your own values
-API_ID = 3845818 # Your API ID
-API_HASH = "95937bcf6bc0938f263fc7ad96959c6d" # Your API Hash
-
-# Session string will be generated on first run
-SESSION_STRING = None  # Will be generated automatically
-
-app = Client(
-    "message_deleter_user",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    session_string=SESSION_STRING
-)
 async def delete_all_messages(chat_id):
     print(f"Starting deletion in chat {chat_id}...")
     deleted_count = 0
@@ -76,21 +59,26 @@ async def delete_all_in_channel(client: Client, message: Message):
     )
     
     try:
-        # Wait for "YES" response for 30 seconds
-        response = await client.listen.Message(
-            filters.text & filters.chat(message.chat.id) & filters.user(message.from_user.id),
-            timeout=30
-        )
+        # Define a filter for the expected response
+        def response_filter(_, msg):
+            return (
+                msg.text and
+                msg.text.upper() == "YES" and
+                msg.chat.id == message.chat.id and
+                msg.from_user.id == message.from_user.id
+            )
         
-        if response.text.upper() == "YES":
-            processing = await message.reply_text("⏳ Starting deletion process...")
-            count = await delete_all_messages(message.chat.id)
-            await processing.edit_text(f"✅ Deletion completed! Removed {count} messages.")
-        else:
-            await message.reply_text("❌ Operation cancelled.")
+        # Wait for response
+        response = await client.listen(filters.create(response_filter), timeout=30)
+        
+        processing = await message.reply_text("⏳ Starting deletion process...")
+        count = await delete_all_messages(message.chat.id)
+        await processing.edit_text(f"✅ Deletion completed! Removed {count} messages.")
             
     except asyncio.TimeoutError:
         await message.reply_text("⌛ Confirmation timed out. Operation cancelled.")
+    except Exception as e:
+        await message.reply_text(f"❌ Error: {str(e)}")
 
 if __name__ == "__main__":
     print("""
@@ -105,3 +93,4 @@ if __name__ == "__main__":
     =============================================
     """)
     app.run()
+
