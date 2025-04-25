@@ -5,95 +5,96 @@ import asyncio
 # Replace these with your own values
 API_ID = 3845818 # Your API ID
 API_HASH = "95937bcf6bc0938f263fc7ad96959c6d" # Your API Hash
-BOT_TOKEN ="7374311692:AAHE-i7BnxI3cZNQ_S_ytlJ6Z-9mJX_D2aI"# Your bot token
 
+# Session string will be generated on first run
+SESSION_STRING = None  # Will be generated automatically
 
-app = Client("message_deleter_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+app = Client(
+    "message_deleter_user",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    session_string=SESSION_STRING
+)
 
-async def delete_previous_messages(chat_id, last_message_id):
+async def delete_all_messages(chat_id):
+    print(f"Starting deletion in chat {chat_id}...")
     deleted_count = 0
-    current_message_id = last_message_id - 1  # Start from the message before last
     
-    while current_message_id > 1:
+    async for message in app.get_chat_history(chat_id):
         try:
-            # Try to get and delete each message sequentially
-            message = await app.get_messages(chat_id, current_message_id)
-            if message:
-                await message.delete()
-                deleted_count += 1
-                print(f"Deleted message ID {current_message_id}")
-                await asyncio.sleep(1)  # Rate limiting
-            current_message_id -= 1
+            await message.delete()
+            deleted_count += 1
+            print(f"Deleted message {deleted_count}")
+            await asyncio.sleep(0.5)  # Avoid flood limits
         except Exception as e:
-            print(f"Error deleting message {current_message_id}: {e}")
-            current_message_id -= 1  # Continue to next message even if error
+            print(f"Couldn't delete message: {e}")
+            continue
     
+    print(f"Finished! Deleted {deleted_count} messages.")
     return deleted_count
 
 @app.on_message(filters.command("start") & filters.private)
 async def start_command(client: Client, message: Message):
     await message.reply_text(
-        "Add me to a channel as admin with delete permissions, "
-        "then send /deleteall in that channel to remove messages."
+        "Hello! Add me to a channel where I'm admin with delete permissions, "
+        "then send /deleteall in that channel to remove all messages."
     )
 
 @app.on_message(filters.command("deleteall") & ~filters.private)
-async def trigger_deletion(client: Client, message: Message):
-    # Check admin permissions
+async def delete_all_in_channel(client: Client, message: Message):
+    # Check if user is admin with delete permissions
     try:
-        chat_member = await app.get_chat_member(message.chat.id, "me")
+        me = await app.get_me()
+        chat_member = await app.get_chat_member(message.chat.id, me.id)
         if not chat_member.privileges or not chat_member.privileges.can_delete_messages:
-            await message.reply_text("❌ I need admin privileges with delete permission!")
+            await message.reply_text("❌ I need to be an admin with delete permissions!")
             return
     except Exception as e:
         await message.reply_text(f"❌ Error checking permissions: {e}")
         return
-
-    # Send a marker message to establish our reference point
-    marker = await message.reply("🔹 Deletion marker - will be deleted last")
     
-    # Create confirmation buttons
+    # Confirmation buttons
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("✅ Confirm", callback_data=f"confirm_{message.chat.id}_{marker.id}"),
-         InlineKeyboardButton("❌ Cancel", callback_data="cancel")]
+        [InlineKeyboardButton("✅ Confirm", callback_data=f"delete_confirm_{message.chat.id}"),
+         InlineKeyboardButton("❌ Cancel", callback_data="delete_cancel")]
     ])
     
     await message.reply_text(
-        f"⚠️ This will delete messages up to ID {marker.id-1}.\n"
-        "Confirm deletion?",
+        "⚠️ WARNING: This will delete ALL messages in this channel.\n"
+        "Are you sure you want to proceed?",
         reply_markup=keyboard
     )
 
 @app.on_callback_query()
-async def handle_callbacks(client: Client, callback_query: CallbackQuery):
+async def handle_callbacks(client, callback_query):
     data = callback_query.data
     
-    if data.startswith("confirm_"):
-        _, chat_id, last_id = data.split("_")
-        chat_id = int(chat_id)
-        last_id = int(last_id)
-        
+    if data.startswith("delete_confirm_"):
+        chat_id = int(data.split("_")[2])
         await callback_query.answer("Starting deletion...")
-        await callback_query.message.edit_text("⏳ Deleting messages...", reply_markup=None)
+        await callback_query.message.edit_text("⏳ Starting deletion process...", reply_markup=None)
         
         try:
-            count = await delete_previous_messages(chat_id, last_id)
-            # Delete our marker message
-            try:
-                await app.delete_messages(chat_id, last_id)
-            except:
-                pass
-                
-            await callback_query.message.edit_text(
-                f"✅ Deleted {count} messages"
-            )
+            count = await delete_all_messages(chat_id)
+            await callback_query.message.edit_text(f"✅ Deletion completed! Removed {count} messages.")
         except Exception as e:
-            await callback_query.message.edit_text(f"❌ Error: {str(e)}")
+            await callback_query.message.edit_text(f"❌ Error during deletion: {str(e)}")
     
-    elif data == "cancel":
-        await callback_query.answer("Deletion cancelled")
-        await callback_query.message.edit_text("❌ Deletion cancelled", reply_markup=None)
+    elif data == "delete_cancel":
+        await callback_query.answer("Cancelled")
+        await callback_query.message.edit_text("❌ Operation cancelled.", reply_markup=None)
 
 if __name__ == "__main__":
-    print("Starting message deletion bot...")
+    print("""
+    =============================================
+    FIRST RUN INSTRUCTIONS:
+    1. Run this script once
+    2. It will ask for your phone number
+    3. You'll receive a login code via Telegram
+    4. Enter that code when prompted
+    5. After successful login, your session string will print
+    6. Copy that string into the SESSION_STRING variable
+    7. Run the script again
+    =============================================
+    """)
     app.run()
