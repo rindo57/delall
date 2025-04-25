@@ -1,5 +1,5 @@
 from pyrogram import Client, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 import asyncio
 
 # Replace these with your own values
@@ -14,7 +14,7 @@ async def delete_previous_messages(chat_id, last_message_id):
     deleted_count = 0
     current_message_id = last_message_id - 1  # Start from the message before last
     
-    while current_message_id > 0:
+    while current_message_id > 1:
         try:
             # Try to get and delete each message sequentially
             message = await app.get_messages(chat_id, current_message_id)
