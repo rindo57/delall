@@ -58,64 +58,39 @@ async def start_command(client: Client, message: Message):
 
 @app.on_message(filters.command("deleteall") & ~filters.private)
 async def delete_all_in_channel(client: Client, message: Message):
-    # Check if user is admin with delete permissions
+    # Check admin permissions
     try:
         me = await app.get_me()
         chat_member = await app.get_chat_member(message.chat.id, me.id)
         if not chat_member.privileges or not chat_member.privileges.can_delete_messages:
-            await message.reply_text("❌ I need to be an admin with delete permissions!")
+            await message.reply_text("❌ I need admin privileges with delete permission!")
             return
     except Exception as e:
         await message.reply_text(f"❌ Error checking permissions: {e}")
         return
-    
-    # Create confirmation buttons - IMPORTANT: Use reply_markup parameter correctly
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton("✅ Confirm", callback_data=f"confirm_delete_{message.chat.id}"),
-                InlineKeyboardButton("❌ Cancel", callback_data="cancel_delete")
-            ]
-        ]
-    )
-    
-    # Send message with buttons - make sure to use reply_markup=keyboard
-    await message.reply_text(
-        "⚠️ WARNING: This will delete ALL messages in this channel.\n"
-        "Are you sure you want to proceed?",
-        reply_markup=keyboard
-    )
 
-@app.on_callback_query(filters.regex(r"^confirm_delete_"))
-async def confirm_deletion(client: Client, callback_query: CallbackQuery):
-    chat_id = int(callback_query.data.split("_")[-1])
-    
-    # Acknowledge the button press first
-    await callback_query.answer("Starting deletion...")
-    
-    # Edit the original message to show processing
-    await callback_query.message.edit_text(
-        "⏳ Starting deletion process... This may take a while.",
-        reply_markup=None
+    # Ask for confirmation
+    confirm = await message.reply_text(
+        "⚠️ WARNING: This will delete ALL messages in this channel.\n"
+        "Reply with 'YES' to confirm deletion."
     )
     
     try:
-        count = await delete_all_messages(chat_id)
-        await callback_query.message.edit_text(
-            f"✅ Deletion completed! Removed {count} messages."
+        # Wait for "YES" response for 30 seconds
+        response = await client.listen.Message(
+            filters.text & filters.chat(message.chat.id) & filters.user(message.from_user.id),
+            timeout=30
         )
-    except Exception as e:
-        await callback_query.message.edit_text(
-            f"❌ Error during deletion: {str(e)}"
-        )
-
-@app.on_callback_query(filters.regex(r"^cancel_delete$"))
-async def cancel_deletion(client: Client, callback_query: CallbackQuery):
-    await callback_query.answer("Operation cancelled")
-    await callback_query.message.edit_text(
-        "❌ Deletion cancelled.",
-        reply_markup=None
-    )
+        
+        if response.text.upper() == "YES":
+            processing = await message.reply_text("⏳ Starting deletion process...")
+            count = await delete_all_messages(message.chat.id)
+            await processing.edit_text(f"✅ Deletion completed! Removed {count} messages.")
+        else:
+            await message.reply_text("❌ Operation cancelled.")
+            
+    except asyncio.TimeoutError:
+        await message.reply_text("⌛ Confirmation timed out. Operation cancelled.")
 
 if __name__ == "__main__":
     print("""
@@ -129,4 +104,3 @@ if __name__ == "__main__":
     6. Run the script again
     =============================================
     """)
-    app.run()
