@@ -15,6 +15,23 @@ app = Client(
     api_hash=API_HASH,
     session_string=SESSION_STRING
 )
+from pyrogram import Client, filters
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+import asyncio
+
+# Replace these with your own values
+API_ID = 3845818 # Your API ID
+API_HASH = "95937bcf6bc0938f263fc7ad96959c6d" # Your API Hash
+
+# Session string will be generated on first run
+SESSION_STRING = None  # Will be generated automatically
+
+app = Client(
+    "message_deleter_user",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    session_string=SESSION_STRING
+)
 async def delete_all_messages(chat_id):
     print(f"Starting deletion in chat {chat_id}...")
     deleted_count = 0
