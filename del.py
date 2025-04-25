@@ -85,7 +85,7 @@ async def handle_callbacks(client: Client, callback_query: CallbackQuery):
                 pass
                 
             await callback_query.message.edit_text(
-                f"✅ Deleted {count} messages (up to ID {last_id-1})"
+                f"✅ Deleted {count} messages"
             )
         except Exception as e:
             await callback_query.message.edit_text(f"❌ Error: {str(e)}")
