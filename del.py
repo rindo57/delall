@@ -5,7 +5,7 @@ import asyncio
 # Replace these with your own values
 API_ID = 3845818 # Your API ID
 API_HASH = "95937bcf6bc0938f263fc7ad96959c6d" # Your API Hash
-BOT_TOKEN ="7005003917:AAG1GwMAm4uFxMOzvesg1vTWRjVX0hHKStM" # Your bot token
+BOT_TOKEN ="7374311692:AAHE-i7BnxI3cZNQ_S_ytlJ6Z-9mJX_D2aI"# Your bot token
 
 
 app = Client("message_deleter_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
@@ -22,7 +22,7 @@ async def delete_previous_messages(chat_id, last_message_id):
                 await message.delete()
                 deleted_count += 1
                 print(f"Deleted message ID {current_message_id}")
-                await asyncio.sleep(0.5)  # Rate limiting
+                await asyncio.sleep(1)  # Rate limiting
             current_message_id -= 1
         except Exception as e:
             print(f"Error deleting message {current_message_id}: {e}")
