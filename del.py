@@ -15,56 +15,61 @@ app = Client(
     bot_token=BOT_TOKEN
 )
 
-async def delete_visible_messages(chat_id):
-    print(f"Starting deletion in chat {chat_id}...")
+async def delete_recent_messages(chat_id):
+    """
+    Deletes recent messages that the bot can see (new messages since bot joined)
+    """
     deleted_count = 0
-    
-    # Send a marker message
-    marker = await app.send_message(chat_id, "🚀 Bot deletion marker - this will be deleted")
+    last_message_id = 0
     
     while True:
-        found_messages = 0
-        async for message in app.get_chat_history(chat_id, limit=100):
-            # Don't delete messages newer than our marker
-            if message.id >= marker.id:
-                continue
+        # Get the most recent message in the channel
+        try:
+            messages = await app.get_messages(chat_id, limit=1)
+            if not messages:
+                break
                 
+            message = messages[0] if isinstance(messages, list) else messages
+            
+            # Stop if we've reached a message we've already processed
+            if message.id == last_message_id:
+                break
+                
+            last_message_id = message.id
+            
+            # Delete the message
             try:
                 await message.delete()
                 deleted_count += 1
-                found_messages += 1
                 print(f"Deleted message {deleted_count}")
-                await asyncio.sleep(0.5)  # To avoid flood limits
+                await asyncio.sleep(0.5)  # Rate limiting
             except Exception as e:
-                print(f"Couldn't delete message: {e}")
+                print(f"Couldn't delete message {message.id}: {e}")
                 continue
-        
-        # If no more messages found, break the loop
-        if found_messages == 0:
+                
+        except Exception as e:
+            print(f"Error getting messages: {e}")
             break
     
-    # Delete our marker message
-    try:
-        await marker.delete()
-    except:
-        pass
-    
-    print(f"Finished! Deleted {deleted_count} messages.")
     return deleted_count
 
 @app.on_message(filters.command("start") & filters.private)
 async def start_command(client: Client, message: Message):
     await message.reply_text(
         "Hello! Add me to a channel where I'm admin with delete permissions, "
-        "then send /deleteall in that channel to remove all visible messages."
+        "then send /deleteall in that channel to remove recent messages."
     )
 
 @app.on_message(filters.command("deleteall") & ~filters.private)
-async def delete_all_in_channel(client: Client, message: Message):
+async def delete_in_channel(client: Client, message: Message):
     # Check if bot is admin with delete permissions
-    chat_member = await app.get_chat_member(message.chat.id, "me")
-    if not chat_member.privileges or not chat_member.privileges.can_delete_messages:
-        await message.reply_text("❌ I need to be an admin with delete permissions in this channel!")
+    try:
+        chat_member = await app.get_chat_member(message.chat.id, "me")
+        if not chat_member.privileges or not chat_member.privileges.can_delete_messages:
+            await message.reply_text("❌ I need to be an admin with delete permissions in this channel!")
+            return
+    except Exception as e:
+        await message.reply_text(f"❌ Error checking permissions: {e}")
         return
     
     # Create confirmation buttons
@@ -78,8 +83,8 @@ async def delete_all_in_channel(client: Client, message: Message):
     )
     
     await message.reply_text(
-        "⚠️ WARNING: This will delete all VISIBLE messages in this channel.\n"
-        "Note: Bots can only delete messages they can see (usually recent ones).\n"
+        "⚠️ WARNING: This will delete RECENT messages in this channel.\n"
+        "Note: Bots can only delete messages sent after they joined.\n"
         "Are you sure you want to proceed?",
         reply_markup=keyboard
     )
@@ -94,13 +99,13 @@ async def confirm_deletion(client, callback_query):
         reply_markup=None
     )
     
-    # Delete visible messages
+    # Delete messages
     try:
-        count = await delete_visible_messages(chat_id)
+        count = await delete_recent_messages(chat_id)
         # Update message with result
         await callback_query.message.edit_text(
-            f"✅ Deletion completed! Removed {count} visible messages.\n"
-            "Note: Bots can only delete messages they can see (usually recent ones).",
+            f"✅ Deletion completed! Removed {count} recent messages.\n"
+            "Note: Bots can only delete messages sent after they joined.",
             reply_markup=None
         )
     except Exception as e:
