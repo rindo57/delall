@@ -5,7 +5,7 @@ import asyncio
 # Replace these with your own values
 API_ID = 3845818 # Your API ID
 API_HASH = "95937bcf6bc0938f263fc7ad96959c6d" # Your API Hash
-BOT_TOKEN ="7374311692:AAFJhri3iPUdTc5UPkqMVFIspVVee-VvDgM"  # Your bot token
+BOT_TOKEN ="7005003917:AAG1GwMAm4uFxMOzvesg1vTWRjVX0hHKStM" # Your bot token
 
 app = Client(
     "message_deleter_bot",
@@ -20,7 +20,7 @@ async def delete_all_messages(chat_id):
         
         # Get all messages from the channel
         messages = app.get_chat_history(chat_id)
-        
+        print("msgs: ", messages)
         deleted_count = 0
         async for message in messages:
             try:
