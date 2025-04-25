@@ -15,7 +15,6 @@ app = Client(
     api_hash=API_HASH,
     session_string=SESSION_STRING
 )
-
 async def delete_all_messages(chat_id):
     print(f"Starting deletion in chat {chat_id}...")
     deleted_count = 0
@@ -53,48 +52,64 @@ async def delete_all_in_channel(client: Client, message: Message):
         await message.reply_text(f"❌ Error checking permissions: {e}")
         return
     
-    # Confirmation buttons
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("✅ Confirm", callback_data=f"delete_confirm_{message.chat.id}"),
-         InlineKeyboardButton("❌ Cancel", callback_data="delete_cancel")]
-    ])
+    # Create confirmation buttons - IMPORTANT: Use reply_markup parameter correctly
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton("✅ Confirm", callback_data=f"confirm_delete_{message.chat.id}"),
+                InlineKeyboardButton("❌ Cancel", callback_data="cancel_delete")
+            ]
+        ]
+    )
     
+    # Send message with buttons - make sure to use reply_markup=keyboard
     await message.reply_text(
         "⚠️ WARNING: This will delete ALL messages in this channel.\n"
         "Are you sure you want to proceed?",
         reply_markup=keyboard
     )
 
-@app.on_callback_query()
-async def handle_callbacks(client, callback_query):
-    data = callback_query.data
+@app.on_callback_query(filters.regex(r"^confirm_delete_"))
+async def confirm_deletion(client: Client, callback_query: CallbackQuery):
+    chat_id = int(callback_query.data.split("_")[-1])
     
-    if data.startswith("delete_confirm_"):
-        chat_id = int(data.split("_")[2])
-        await callback_query.answer("Starting deletion...")
-        await callback_query.message.edit_text("⏳ Starting deletion process...", reply_markup=None)
-        
-        try:
-            count = await delete_all_messages(chat_id)
-            await callback_query.message.edit_text(f"✅ Deletion completed! Removed {count} messages.")
-        except Exception as e:
-            await callback_query.message.edit_text(f"❌ Error during deletion: {str(e)}")
+    # Acknowledge the button press first
+    await callback_query.answer("Starting deletion...")
     
-    elif data == "delete_cancel":
-        await callback_query.answer("Cancelled")
-        await callback_query.message.edit_text("❌ Operation cancelled.", reply_markup=None)
+    # Edit the original message to show processing
+    await callback_query.message.edit_text(
+        "⏳ Starting deletion process... This may take a while.",
+        reply_markup=None
+    )
+    
+    try:
+        count = await delete_all_messages(chat_id)
+        await callback_query.message.edit_text(
+            f"✅ Deletion completed! Removed {count} messages."
+        )
+    except Exception as e:
+        await callback_query.message.edit_text(
+            f"❌ Error during deletion: {str(e)}"
+        )
+
+@app.on_callback_query(filters.regex(r"^cancel_delete$"))
+async def cancel_deletion(client: Client, callback_query: CallbackQuery):
+    await callback_query.answer("Operation cancelled")
+    await callback_query.message.edit_text(
+        "❌ Deletion cancelled.",
+        reply_markup=None
+    )
 
 if __name__ == "__main__":
     print("""
     =============================================
     FIRST RUN INSTRUCTIONS:
-    1. Run this script once
-    2. It will ask for your phone number
-    3. You'll receive a login code via Telegram
-    4. Enter that code when prompted
-    5. After successful login, your session string will print
-    6. Copy that string into the SESSION_STRING variable
-    7. Run the script again
+    1. Run this script
+    2. Enter your phone number (with country code)
+    3. Enter the login code you receive
+    4. After login, your session string will print
+    5. Copy it into the SESSION_STRING variable
+    6. Run the script again
     =============================================
     """)
     app.run()
