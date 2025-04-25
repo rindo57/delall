@@ -15,25 +15,24 @@ app = Client(
 )
 
 async def delete_all_messages(chat_id):
-    async with app:
-        print(f"Starting deletion in chat {chat_id}...")
-        
-        # Get all messages from the channel
-        messages = app.get_chat_history(chat_id)
-        print("msgs: ", messages)
-        deleted_count = 0
-        async for message in messages:
-            try:
-                await message.delete()
-                deleted_count += 1
-                print(f"Deleted message {deleted_count}")
-                await asyncio.sleep(0.5)  # To avoid flood limits
-            except Exception as e:
-                print(f"Couldn't delete message: {e}")
-                continue
-        
-        print(f"Finished! Deleted {deleted_count} messages.")
-        return deleted_count
+    print(f"Starting deletion in chat {chat_id}...")
+    
+    # Get all messages from the channel
+    messages = app.get_chat_history(chat_id)
+    
+    deleted_count = 0
+    async for message in messages:
+        try:
+            await message.delete()
+            deleted_count += 1
+            print(f"Deleted message {deleted_count}")
+            await asyncio.sleep(0.5)  # To avoid flood limits
+        except Exception as e:
+            print(f"Couldn't delete message: {e}")
+            continue
+    
+    print(f"Finished! Deleted {deleted_count} messages.")
+    return deleted_count
 
 @app.on_message(filters.command("start") & filters.private)
 async def start_command(client: Client, message: Message):
