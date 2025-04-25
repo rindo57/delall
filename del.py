@@ -50,29 +50,50 @@ async def delete_all_in_channel(client: Client, message: Message):
         await message.reply_text("❌ I need to be an admin with delete permissions in this channel!")
         return
     
-    # Confirm before proceeding
-    confirmation = await message.reply_text(
-        "⚠️ WARNING: This will delete ALL messages in this channel. "
-        "Are you sure you want to proceed? Reply 'YES' to confirm.",
+    # Create confirmation buttons
+    keyboard = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("✅ Confirm", callback_data=f"delete_confirm_{message.chat.id}"),
+                InlineKeyboardButton("❌ Cancel", callback_data="delete_cancel")
+            ]
+        ]
+    )
+    
+    await message.reply_text(
+        "⚠️ WARNING: This will delete ALL messages in this channel.\n"
+        "Are you sure you want to proceed?",
+        reply_markup=keyboard
+    )
+
+@app.on_callback_query(filters.regex(r"^delete_confirm_"))
+async def confirm_deletion(client, callback_query):
+    chat_id = int(callback_query.data.split("_")[2])
+    
+    # Edit the original message to show processing
+    await callback_query.message.edit_text(
+        "⏳ Starting deletion process... This may take a while.",
         reply_markup=None
     )
     
-    # Wait for confirmation in the same chat
-    try:
-        response = await client.listen.Message(
-            filters.text & filters.chat(message.chat.id) & filters.user(message.from_user.id),
-            timeout=30
-        )
-        
-        if response.text.upper() == "YES":
-            processing_msg = await message.reply_text("⏳ Starting deletion process... This may take a while.")
-            count = await delete_all_messages(message.chat.id)
-            await processing_msg.edit_text(f"✅ Deletion completed! Removed {count} messages.")
-        else:
-            await message.reply_text("❌ Operation cancelled.")
-            
-    except asyncio.TimeoutError:
-        await message.reply_text("⌛ Confirmation timed out. Operation cancelled.")
+    # Delete all messages
+    count = await delete_all_messages(chat_id)
+    
+    # Update message with result
+    await callback_query.message.edit_text(
+        f"✅ Deletion completed! Removed {count} messages.",
+        reply_markup=None
+    )
+    
+    await callback_query.answer()
+
+@app.on_callback_query(filters.regex(r"^delete_cancel$"))
+async def cancel_deletion(client, callback_query):
+    await callback_query.message.edit_text(
+        "❌ Operation cancelled.",
+        reply_markup=None
+    )
+    await callback_query.answer("Deletion cancelled")
 
 if __name__ == "__main__":
     print("Starting bot...")
