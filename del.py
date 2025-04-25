@@ -16,7 +16,7 @@ async def delete_previous_messages(chat_id, last_message_id):
     deleted_count = 0
     current_message_id = last_message_id - 1  # Start from the message before last
     
-    while current_message_id > 0:
+    while current_message_id > 1:
         try:
             # Try to get and delete each message sequentially
             message = await app.get_messages(chat_id, current_message_id)
@@ -71,7 +71,7 @@ async def process_deletion(client, callback_query):
     chat_id = int(callback_query.matches[0].group(1))
     last_id = int(callback_query.matches[0].group(2))
     
-    await callback_query.message.edit_text("⏳ Deleting messages...")
+   # await callback_query.message.edit_text("⏳ Deleting messages...")
     
     try:
         count = await delete_previous_messages(chat_id, last_id)
