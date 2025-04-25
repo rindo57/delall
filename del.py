@@ -20,7 +20,7 @@ async def delete_recent_messages(chat_id):
     Deletes recent messages that the bot can see (new messages since bot joined)
     """
     deleted_count = 0
-    last_message_id = 0
+    last_message_id = 25
     
     while True:
         # Get the most recent message in the channel
