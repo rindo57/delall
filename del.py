@@ -64,12 +64,7 @@ async def delete_all_in_channel(client: Client, message: Message):
     processing = await message.reply_text("⏳ Starting deletion process...")
     count = await delete_all_messages(message.chat.id)
     await processing.edit_text(f"✅ Deletion completed! Removed {count} messages.")
- '''           
-    except asyncio.TimeoutError:
-        await message.reply_text("⌛ Confirmation timed out. Operation cancelled.")
-    except Exception as e:
-        await message.reply_text(f"❌ Error: {str(e)}")
-'''
+
 if __name__ == "__main__":
     print("""
     =============================================
