@@ -25,7 +25,7 @@ async def delete_recent_messages(chat_id):
     while True:
         # Get the most recent message in the channel
         try:
-            messages = await app.get_messages(chat_id, limit=1)
+            messages = await app.get_messages(chat_id)
             if not messages:
                 break
                 
