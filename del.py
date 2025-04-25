@@ -59,25 +59,11 @@ async def delete_all_in_channel(client: Client, message: Message):
         "⚠️ WARNING: This will delete ALL messages in this channel.\n"
         "Reply with 'YES' to confirm deletion."
     )
-    
-    try:
-        # Wait for "YES" response
-        response = None
-        while True:
-            msg = await client.listen.Message(
-                filters.text & 
-                filters.chat(message.chat.id) & 
-                filters.user(message.from_user.id),
-                timeout=30
-            )
-            if msg.text.upper() == "YES":
-                response = msg
-                break
-            await message.reply_text("Please reply with exactly 'YES' to confirm")
+
         
-        processing = await message.reply_text("⏳ Starting deletion process...")
-        count = await delete_all_messages(message.chat.id)
-        await processing.edit_text(f"✅ Deletion completed! Removed {count} messages.")
+    processing = await message.reply_text("⏳ Starting deletion process...")
+    count = await delete_all_messages(message.chat.id)
+    await processing.edit_text(f"✅ Deletion completed! Removed {count} messages.")
             
     except asyncio.TimeoutError:
         await message.reply_text("⌛ Confirmation timed out. Operation cancelled.")
