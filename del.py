@@ -9,12 +9,14 @@ API_HASH = "95937bcf6bc0938f263fc7ad96959c6d" # Your API Hash
 # Session string will be generated on first run
 SESSION_STRING = None  # Will be generated automatically
 
+
 app = Client(
     "message_deleter_user",
     api_id=API_ID,
     api_hash=API_HASH,
     session_string=SESSION_STRING
 )
+
 async def delete_all_messages(chat_id):
     print(f"Starting deletion in chat {chat_id}...")
     deleted_count = 0
@@ -53,23 +55,25 @@ async def delete_all_in_channel(client: Client, message: Message):
         return
 
     # Ask for confirmation
-    confirm = await message.reply_text(
+    confirm_msg = await message.reply_text(
         "⚠️ WARNING: This will delete ALL messages in this channel.\n"
         "Reply with 'YES' to confirm deletion."
     )
     
     try:
-        # Define a filter for the expected response
-        def response_filter(_, msg):
-            return (
-                msg.text and
-                msg.text.upper() == "YES" and
-                msg.chat.id == message.chat.id and
-                msg.from_user.id == message.from_user.id
+        # Wait for "YES" response
+        response = None
+        while True:
+            msg = await client.listen.Message(
+                filters.text & 
+                filters.chat(message.chat.id) & 
+                filters.user(message.from_user.id),
+                timeout=30
             )
-        
-        # Wait for response
-        response = await client.listen(filters.create(response_filter), timeout=30)
+            if msg.text.upper() == "YES":
+                response = msg
+                break
+            await message.reply_text("Please reply with exactly 'YES' to confirm")
         
         processing = await message.reply_text("⏳ Starting deletion process...")
         count = await delete_all_messages(message.chat.id)
